@@ -50,15 +50,31 @@ add_action('shutdown', 'buffer_bunny_end');
 //Bu alan resimlerde cdn.ampproject.org kullanmak isteyenler için opsiyonel olarak eklenmiştir.
 
 function buffer_bunny( $finder ) {
-
-    if ( strpos( $finder, 'https://cdn.ampproject.org/' ) !== false && ! is_admin() ) {
-		
 	
-        $site = str_replace(['http://', 'https://'], '', rtrim(get_site_url(), '/'));
+	$site = str_replace(['http://', 'https://'], '', rtrim(get_site_url(), '/'));
+	$http_version = is_ssl() ? 'https://' : 'http://';
+	$addon = !empty(get_option('moreslab__amphtml')) ? get_option('moreslab__amphtml') : str_replace(['https://', 'http://'], null, get_site_url());
+	
+	if ( strpos( $finder, 'https://cdn.ampproject.org' ) == false && $_SERVER['HTTP_HOST']==$addon) {
+		
+		header("HTTP/1.1 403 Forbidden" );
+		exit;
+		
+		} else {
+	
+	if ( strpos( $finder, 'https://cdn.ampproject.org' ) !== false && ! is_admin() ) {
+	
+	$aPattern = '@<a(.*?)href="https?://'.$site.'@si';
+    $aReplace = '<a$1href="https://'.str_replace(['.', ' '], '-', $addon).'.cdn.ampproject.org'.'/c/s/'.$addon;
+    $finder = preg_replace( $aPattern, $aReplace, $finder );
 
-        $imgPattern = '@<amp-img(.*?)src="https?://'.$site.'@si';
-        $imgReplace = '<amp-img$1src="https://'.str_replace(['.', ' '], '-', $site).'.cdn.ampproject.org'.'/i/s/'.$site;
-        $finder = preg_replace( $imgPattern, $imgReplace, $finder );
+    $imgPattern = '@<amp-img(.*?)src="https?://'.$site.'@si';
+    $imgReplace = '<amp-img$1src="https://'.str_replace(['.', ' '], '-', $site).'.cdn.ampproject.org'.'/i/s/'.$site;
+    $finder = preg_replace( $imgPattern, $imgReplace, $finder );
+		
+		$icoPattern = '@<link(.*?)icon" href="https?://'.$site.'@si';
+        $icoReplace = '<link$1icon" href="https://'.str_replace(['.', ' '], '-', $site).'.cdn.ampproject.org'.'/i/s/'.$site;
+        $finder = preg_replace( $icoPattern, $icoReplace, $finder );
 
 
         $bgPattern = "@background-image:(.*?)url\('?https?://" . $site.'@si';
@@ -68,15 +84,13 @@ function buffer_bunny( $finder ) {
 	
     }
 	
-	$http_version = is_ssl() ? 'https://' : 'http://';
-	$addon = !empty(get_option('moreslab__amphtml')) ? get_option('moreslab__amphtml') : str_replace(['https://', 'http://'], null, get_site_url());
-	
 	$finder = str_replace(
         '<link rel="amphtml" href="'.get_site_url(),
         '<link rel="amphtml" href="'.$http_version . $addon,
         $finder);
 	
     return $finder;
+	}
 }
 
 function buffer_bunny_start()
